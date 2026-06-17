@@ -1,0 +1,9 @@
+batch_size = 1
+lr = 0.0001
+d_model = 512 # embedding length
+d_ff = 2048
+layers = 6
+heads = 8
+dropout_rate = 0.2
+epochs = 60
+PAD_ID = 0
