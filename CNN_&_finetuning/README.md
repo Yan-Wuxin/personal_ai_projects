@@ -21,6 +21,9 @@
 - **训练表现**：
   - **训练集 (Train Set)**：模型在经过 60+ Epoch 的迭代后，训练集准确率逐渐逼近100.00，交叉熵损失（Cross-Entropy Loss）收敛至约 0.0166
   - **验证集 (Validation Set)**：验证集上的分类准确率达到 90% 以上
+<img width="989" height="390" alt="image" src="https://github.com/user-attachments/assets/a119a31d-5f82-43fe-92dc-0fbfdd5b0d44" />
+<img width="989" height="390" alt="image" src="https://github.com/user-attachments/assets/28e9b741-2d35-40c1-8b42-55013852a08e" />
+
 ## 文件目录结构
 ```text
 ├── GenAI-ML-HW6.ipynb      # 包含数据导入、增强、模型微调与评估的核心Colab笔记本
