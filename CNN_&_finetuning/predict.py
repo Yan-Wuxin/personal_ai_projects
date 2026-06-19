@@ -20,7 +20,7 @@ def inference_and_export_json():
     results = []
     idx_list = []
 
-    print("Running inference and generating JSON...")
+    print("开始测试并生成 JSON 文件...")
     with torch.no_grad():
         for images, idx in tqdm(test_loader):
             images = images.to(config.DEVICE)
@@ -41,7 +41,7 @@ def inference_and_export_json():
     output_path = os.path.join(config.SAVE_DIR, f'{STUDENT_ID.lower()}.json')
     with open(output_path, "w") as f:
         json.dump(final_output, f, indent=4)
-    print(f"JSON prediction saved to {output_path}")
+    print(f"JSON 测试文件已保存至{output_path}")
 
 
 def generate_inference_images(): # 将推理结果按照类别名字分类并导出为图片放入子文件夹中
@@ -59,7 +59,7 @@ def generate_inference_images(): # 将推理结果按照类别名字分类并导
                           strict=False)
     model.eval()
 
-    print("Generating classified images into folders...")
+    print("正在分类图片并保存至对应文件夹...")
     with torch.no_grad():
         for images, idx in tqdm(test_loader):
             images = images.to(config.DEVICE)
@@ -74,7 +74,7 @@ def generate_inference_images(): # 将推理结果按照类别名字分类并导
                 img_tensor = images[i].cpu()
                 img_save_path = os.path.join(config.OUTPUT_DIR, pred_label, f"{img_id}.png")
                 save_image(img_tensor, img_save_path)
-    print(f"Classified images saved successfully to {config.OUTPUT_DIR}")
+    print(f"已分类图像成功保存至{config.OUTPUT_DIR}")
 
 
 def visualize_test_batch(n_images=6): # 可视化单个Batch测试集图片
@@ -105,5 +105,6 @@ def visualize_test_batch(n_images=6): # 可视化单个Batch测试集图片
 
 
 if __name__ == "__main__":
+    visualize_test_batch()
     inference_and_export_json()
     generate_inference_images()

@@ -11,8 +11,7 @@ class MyGOCharacterDataset(Dataset):
     def __init__(self, json_path, images_dir, transform=None):
         self.images_dir = images_dir
         self.transform = transform
-
-        ## load metadata
+        # 加载元数据
         with open(json_path, 'r', encoding='utf-8') as f:
             self.metadata = json.load(f)
 
@@ -28,7 +27,7 @@ class MyGOCharacterDataset(Dataset):
 
         if self.transform:
             image = self.transform(image)
-        if "test" in self.images_dir:
+        if "test" in self.images_dir: # 测试集无标签
             return image, img_id
         else:
             label = attr['label']
@@ -38,15 +37,15 @@ class MyGOCharacterDataset(Dataset):
 
 def get_transforms(): # 考虑到发色和瞳孔颜色对二次元形象识别的重要性，故不进行随机灰度变换
     train_transform = transforms.Compose([
-        transforms.Resize((144, 144)),  # lightly enlarge
-        transforms.RandomHorizontalFlip(p=0.5),  # Filp the image horizontally
-        transforms.RandomRotation(degrees=15),  # rotate the image randomly
+        transforms.Resize((144, 144)),  # 轻微放大
+        transforms.RandomHorizontalFlip(p=0.5),  # 随机翻转
+        transforms.RandomRotation(degrees=15),  # 随机旋转
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1),
-        transforms.RandomCrop((128, 128)),  # crop the image randomly but maintain the original size
+        transforms.RandomCrop((128, 128)),  # 随机裁剪但维持原图片尺寸
         transforms.ToTensor(),
     ])
 
-    test_transform = transforms.Compose([
+    test_transform = transforms.Compose([ # 测试集不做数据增强操作
         transforms.Resize((128, 128)),
         transforms.ToTensor(),
     ])

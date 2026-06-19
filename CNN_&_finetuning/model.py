@@ -7,7 +7,7 @@ import torchvision
 class MyCNNModel(nn.Module):
     def __init__(self, num_classes=10):
         super().__init__()
-        self.resnet18 = torchvision.models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        self.resnet18 = torchvision.models.resnet18(weights=models.ResNet18_Weights.DEFAULT) # 加载经典残差网络
 
         # 冻结原模型参数，进行迁移学习
         for param in self.resnet18.parameters():

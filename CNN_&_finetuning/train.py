@@ -40,6 +40,7 @@ def train_model():
         train_loss = 0
         train_correct = 0
 
+        # 训练
         print("=" * 20 + f"Epoch {epoch + 1}" + "=" * 20)
         for images, labels, idx in tqdm(train_loader):
             images, labels = images.to(config.DEVICE), labels.to(config.DEVICE)
@@ -56,7 +57,7 @@ def train_model():
         train_acc = train_correct / len(train_set)
         print(f"Train Loss={avg_train_loss:.4f}, Train Acc={train_acc:.2%}")
 
-        # Validation phase
+        # 验证
         val_correct = 0
         val_loss = 0
         model.eval()
@@ -70,7 +71,7 @@ def train_model():
 
         avg_val_loss = val_loss / len(val_loader)
         val_acc = val_correct / len(val_set)
-        print(f"Valid Loss={avg_val_loss:.4f}, Valid Acc={val_acc:.2%}")
+        print(f"Loss={avg_val_loss:.4f}, Acc={val_acc:.2%}")
 
         scheduler.step()
 
@@ -78,14 +79,14 @@ def train_model():
             best_val_acc = val_acc
             save_path = os.path.join(config.SAVE_DIR, 'best_model.pth')
             torch.save(model.state_dict(), save_path)
-            print("Model saved (best validation acc.)")
+            print("当前最佳模型参数已保存")
 
         train_losses.append(avg_train_loss)
         val_losses.append(avg_val_loss)
         train_accs.append(train_acc)
         val_accs.append(val_acc)
 
-    # Plot and save curves
+    # 绘制并保存曲线图
     epochs = range(1, config.NUM_EPOCHS + 1)
     plt.figure(figsize=(10, 4))
     plt.subplot(1, 2, 1)
@@ -105,7 +106,7 @@ def train_model():
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(config.SAVE_DIR, 'training_curve.png'))
-    print(f"Training completed. Curve saved to {config.SAVE_DIR}")
+    print(f"训练完成，模型已保存至{config.SAVE_DIR}")
 
 
 if __name__ == "__main__":
