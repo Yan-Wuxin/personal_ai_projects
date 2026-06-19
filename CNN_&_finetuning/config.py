@@ -1,20 +1,38 @@
 import torch
-import os
 
-# 路径配置
-DATA_DIR = "./dataset"
-TRAIN_DIR = os.path.join(DATA_DIR, "train")
-VALID_DIR = os.path.join(DATA_DIR, "valid")
-TEST_DIR = os.path.join(DATA_DIR, "test")
+# 随机种子与设备配置
+SEED = 23
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-MODEL_SAVE_PATH = "./cnn_model.pth"
+# 数据集元数据及图片目录路径
+TRAIN_JSON_PATH = './train/train.json'
+TRAIN_IMG_DIR = './train'
+VALID_JSON_PATH = './valid/valid.json'
+VALID_IMG_DIR = './valid'
+TEST_JSON_PATH = './test/test.json'
+TEST_IMG_DIR = './test'
 
-# 超参数
-BATCH_SIZE = 32
-IMAGE_SIZE = (224, 224)  # 适配大多数经典预训练模型的输入尺寸
-NUM_CLASSES = 10         # 10位主要核心女性角色
-LR = 1e-4                # 微调时建议使用较小的学习率
-EPOCHS = 30
+# 模型保存与推理输出路径
+SAVE_DIR = "./linear/"
+OUTPUT_DIR = './inference_result'
 
-# 硬件配置
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# 模型训练超参数
+BATCH_SIZE = 64
+NUM_EPOCHS = 80
+LR = 3e-5
+WEIGHT_DECAY = 1e-4
+
+# 标签与类别映射
+LABEL2CLASS = {
+    "anon": 0,
+    "mutsumi": 1,
+    "nyamuchi": 2,
+    "rana": 3,
+    "sakiko": 4,
+    "soyo": 5,
+    "taki": 6,
+    "tomori": 7,
+    "uika": 8,
+    "umiri": 9
+    ## "mana": 10   ...only appears in few sences...
+}

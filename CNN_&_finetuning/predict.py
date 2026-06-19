@@ -1,63 +1,109 @@
-import torch
-from PIL import Image
-import matplotlib.pyplot as plt
 import os
+import json
+import shutil
+import torch
+from torchvision.utils import save_image
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 import config
-from dataset import get_data_transforms, get_dataloaders
-from model import get_character_classifier
+from dataset import get_dataloaders
+from model import MyCNNModel
 
-@torch.no_grad()
-def predict_single_image(image_path, model, classes, transform, device): # 预测单张输入图片的类别
-    model.eval()
-    image = Image.open(image_path).convert('RGB')
-    input_tensor = transform(image).unsqueeze(0).to(device)
-    
-    outputs = model(input_tensor)
-    _, predicted = outputs.max(1)
-    class_idx = predicted.item()
-    return classes[class_idx]
 
-@torch.no_grad()
-def visualize_test_batch(model, dataloader, classes, device, num_images=8): # 批量可视化推理测试Batch中的前几张图片（对应原Jupyter中的特定需求）
+def inference_and_export_json():
+    _, _, test_loader, _, _, _ = get_dataloaders()
+    model = MyCNNModel(num_classes=len(config.LABEL2CLASS)).to(config.DEVICE)
+    model.load_state_dict(torch.load(os.path.join(config.SAVE_DIR, 'best_model.pth'), map_location=config.DEVICE),
+                          strict=False)
     model.eval()
-    images, labels = next(iter(dataloader))
-    images, labels = images.to(device), labels.to(device)
-    
-    outputs = model(images)
-    _, preds = outputs.max(1)
-    
-    plt.figure(figsize=(15, 8))
-    for i in range(min(num_images, len(images))):
-        ax = plt.subplot(2, 4, i + 1)
-        # 反归一化以便正常显示彩色图像
-        img = images[i].cpu().numpy().transpose((1, 2, 0))
-        import numpy as np
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        img = std * img + mean
-        img = np.clip(img, 0, 1)
-        
-        plt.imshow(img)
-        title_color = "green" if preds[i] == labels[i] else "red"
-        ax.set_title(f"Pred: {classes[preds[i]]}\nTrue: {classes[labels[i]]}", color=title_color)
-        ax.axis('off')
-    
+
+    results = []
+    idx_list = []
+
+    print("Running inference and generating JSON...")
+    with torch.no_grad():
+        for images, idx in tqdm(test_loader):
+            images = images.to(config.DEVICE)
+            outputs = model(images)
+            preds = outputs.argmax(dim=1).cpu().tolist()
+            results.extend(preds)
+            idx_list.extend(idx.cpu().tolist())
+
+    STUDENT_ID = 'ave_classification'
+    final_output = []
+    for (img_id, result) in zip(idx_list, results):
+        out = {
+            "id": img_id,
+            "pred": result
+        }
+        final_output.append(out)
+
+    output_path = os.path.join(config.SAVE_DIR, f'{STUDENT_ID.lower()}.json')
+    with open(output_path, "w") as f:
+        json.dump(final_output, f, indent=4)
+    print(f"JSON prediction saved to {output_path}")
+
+
+def generate_inference_images(): # 将推理结果按照类别名字分类并导出为图片放入子文件夹中
+    _, _, test_loader, _, _, _ = get_dataloaders()
+
+    if os.path.exists(config.OUTPUT_DIR):
+        shutil.rmtree(config.OUTPUT_DIR)
+    for name in config.LABEL2CLASS.keys():
+        os.makedirs(os.path.join(config.OUTPUT_DIR, name), exist_ok=True)
+
+    num_to_class_map = {v: k for k, v in config.LABEL2CLASS.items()}
+
+    model = MyCNNModel(num_classes=len(config.LABEL2CLASS)).to(config.DEVICE)
+    model.load_state_dict(torch.load(os.path.join(config.SAVE_DIR, 'best_model.pth'), map_location=config.DEVICE),
+                          strict=False)
+    model.eval()
+
+    print("Generating classified images into folders...")
+    with torch.no_grad():
+        for images, idx in tqdm(test_loader):
+            images = images.to(config.DEVICE)
+            outputs = model(images)
+            preds = outputs.argmax(dim=1).cpu().tolist()
+
+            for i in range(len(preds)):
+                pred_idx = preds[i]
+                pred_label = num_to_class_map[pred_idx]
+                img_id = idx[i].item() if torch.is_tensor(idx[i]) else idx[i]
+
+                img_tensor = images[i].cpu()
+                img_save_path = os.path.join(config.OUTPUT_DIR, pred_label, f"{img_id}.png")
+                save_image(img_tensor, img_save_path)
+    print(f"Classified images saved successfully to {config.OUTPUT_DIR}")
+
+
+def visualize_test_batch(n_images=6): # 可视化单个Batch测试集图片
+    _, _, test_loader, _, _, _ = get_dataloaders()
+    images, idx = next(iter(test_loader))
+
+    if len(images) > 6 + n_images:
+        images = images[6:6 + n_images]
+        idx = idx[6:6 + n_images]
+    else:
+        images = images[:n_images]
+        idx = idx[:n_images]
+
+    rows, cols = 2, 3
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 10))
+    axes = axes.flatten()
+
+    for i in range(min(n_images, len(images))):
+        img = images[i]
+        img = torch.clamp(img, 0, 1)
+        img_np = img.permute(1, 2, 0).numpy()
+        axes[i].imshow(img_np)
+        axes[i].set_title(f"ID: {idx[i].item() if torch.is_tensor(idx[i]) else idx[i]}")
+        axes[i].axis('off')
+
     plt.tight_layout()
     plt.show()
 
-def main():
-    # 加载标签映射和转换器
-    _, valid_loader, classes = get_dataloaders()
-    _, valid_transform = get_data_transforms()
-    
-    # 实例化并载入已训练好的权重
-    model = get_character_classifier()
-    if os.path.exists(config.MODEL_SAVE_PATH):
-        model.load_state_dict(torch.load(config.MODEL_SAVE_PATH, map_location=config.DEVICE))
-        print("开始执行批量测试可视化...")
-        visualize_test_batch(model, valid_loader, classes, config.DEVICE)
-    else:
-        print(f"未找到训练好的权重文件：{config.MODEL_SAVE_PATH}，请先运行 train.py 训练模型。")
 
 if __name__ == "__main__":
-    main()
+    inference_and_export_json()
+    generate_inference_images()

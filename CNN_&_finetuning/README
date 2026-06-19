@@ -1,6 +1,6 @@
 # BanG Dream! Character Image Classifier (CNN & Finetuning)
 
-本项目基于国立台湾大学李宏毅教授课程（GenAI-ML Fall 2025）的 Homework 6 实现。通过利用经典的深度学习与计算机视觉技术，构建了一个高质量的图像分类器，专门用于精准识别和区分知名企划《BanG Dream! It's MyGO!!!!!》以及《BanG Dream! Ave Mujica》中的 10 位主要核心女性角色
+本项目基于国立台湾大学李宏毅教授课程（GenAI-ML Fall 2025）的 Homework 6 实现。通过利用经典的深度学习与计算机视觉技术，构建了一个高质量的图像分类器，专门用于精准识别和区分知名IP《BanG Dream! It's MyGO!!!!!》以及《BanG Dream! Ave Mujica》中的 10 位核心女性角色
 
 ## 核心任务与TODO目标
 * **深度学习框架**：完全基于 PyTorch 框架搭建底层模型的训练与推理架构
@@ -21,9 +21,11 @@
 - **训练表现**：
   - **训练集 (Train Set)**：模型在经过 60+ Epoch 的迭代后，训练集准确率逐渐逼近100.00，交叉熵损失（Cross-Entropy Loss）收敛至约 0.0166
   - **验证集 (Validation Set)**：验证集上的分类准确率达到 90% 以上
+<img width="989" height="390" alt="image" src="https://github.com/user-attachments/assets/a119a31d-5f82-43fe-92dc-0fbfdd5b0d44" />
+
 ## 文件目录结构
 ```text
-├── GenAI-ML-HW6.ipynb      # 包含数据导入、增强、模型微调与评估的核心Colab笔记本
+├── GenAI-ML-HW6.ipynb      # 原项目文件，包含数据导入、增强、模型微调与评估的核心Colab笔记本
 │
 ├── config.py          # 1. 配置文件（存放超参数、路径等）
 ├── dataset.py         # 2. 数据处理与数据增强（Dataset & DataLoader）
@@ -31,5 +33,7 @@
 ├── train.py           # 4. 训练与验证主程序
 ├── predict.py         # 5. 单张/批量图像推理与可视化的预测脚本
 │
+├── ave_classification.json # 测试结果（json格式）
+├── AVE_Test_Results.zip # 测试结果（分类结果）
 ├── README.md          # 项目说明文档
 └── .gitignore         # 忽略数据和权重文件

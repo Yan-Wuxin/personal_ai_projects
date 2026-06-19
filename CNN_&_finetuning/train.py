@@ -1,82 +1,112 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import config
 from dataset import get_dataloaders
-from model import get_character_classifier
+from model import MyCNNModel
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device):
-    model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
-    
-    for images, labels in tqdm(dataloader, desc="Training"):
-        images, labels = images.to(device), labels.to(device)
-        
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        
-        running_loss += loss.item() * images.size(0)
-        _, predicted = outputs.max(1)
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
-        
-    epoch_loss = running_loss / total
-    epoch_acc = correct / total
-    return epoch_loss, epoch_acc
 
-@torch.no_grad()
-def validate(model, dataloader, criterion, device):
-    model.eval()
-    running_loss = 0.0
-    correct = 0
-    total = 0
-    
-    for images, labels in tqdm(dataloader, desc="Validating"):
-        images, labels = images.to(device), labels.to(device)
-        
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        
-        running_loss += loss.item() * images.size(0)
-        _, predicted = outputs.max(1)
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
-        
-    val_loss = running_loss / total
-    val_acc = correct / total
-    return val_loss, val_acc
+def setup_seed(seed):
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
-def main():
-    # 准备数据与模型
-    train_loader, valid_loader, _ = get_dataloaders()
-    model = get_character_classifier()
-    
-    # 定义损失函数与优化器
+
+def train_model():
+    setup_seed(config.SEED)
+    os.makedirs(config.SAVE_DIR, exist_ok=True)
+
+    train_loader, val_loader, _, train_set, val_set, _ = get_dataloaders()
+    model = MyCNNModel(num_classes=len(config.LABEL2CLASS)).to(config.DEVICE)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=config.LR, weight_decay=1e-4)
-    
-    best_val_acc = 0.0
-    print("开始训练流水线...")
-    
-    for epoch in range(1, config.EPOCHS + 1):
-        print(f"\n--- Epoch {epoch}/{config.EPOCHS} ---")
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, config.DEVICE)
-        val_loss, val_acc = validate(model, valid_loader, criterion, config.DEVICE)
-        
-        print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
-        print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc*100:.2f}%")
-        
-        # 保存表现最好的模型权重
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.LR,
+                            weight_decay=config.WEIGHT_DECAY)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.NUM_EPOCHS)
+
+    best_val_acc = 0
+
+    train_losses, val_losses = [], []
+    train_accs, val_accs = [], []
+
+    for epoch in range(config.NUM_EPOCHS):
+        model.train()
+        train_loss = 0
+        train_correct = 0
+
+        print("=" * 20 + f"Epoch {epoch + 1}" + "=" * 20)
+        for images, labels, idx in tqdm(train_loader):
+            images, labels = images.to(config.DEVICE), labels.to(config.DEVICE)
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            train_loss += loss.item()
+            train_correct += (outputs.argmax(dim=1) == labels).sum().item()
+
+        avg_train_loss = train_loss / len(train_loader)
+        train_acc = train_correct / len(train_set)
+        print(f"Train Loss={avg_train_loss:.4f}, Train Acc={train_acc:.2%}")
+
+        # Validation phase
+        val_correct = 0
+        val_loss = 0
+        model.eval()
+        with torch.no_grad():
+            for images, labels, idx in tqdm(val_loader):
+                images, labels = images.to(config.DEVICE), labels.to(config.DEVICE)
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
+                val_correct += (outputs.argmax(1) == labels).sum().item()
+
+        avg_val_loss = val_loss / len(val_loader)
+        val_acc = val_correct / len(val_set)
+        print(f"Valid Loss={avg_val_loss:.4f}, Valid Acc={val_acc:.2%}")
+
+        scheduler.step()
+
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            torch.save(model.state_dict(), config.MODEL_SAVE_PATH)
-            print(f"最佳权重已成功保存至 {config.MODEL_SAVE_PATH}")
+            save_path = os.path.join(config.SAVE_DIR, 'best_model.pth')
+            torch.save(model.state_dict(), save_path)
+            print("Model saved (best validation acc.)")
+
+        train_losses.append(avg_train_loss)
+        val_losses.append(avg_val_loss)
+        train_accs.append(train_acc)
+        val_accs.append(val_acc)
+
+    # Plot and save curves
+    epochs = range(1, config.NUM_EPOCHS + 1)
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, train_losses, label='Train Loss')
+    plt.plot(epochs, val_losses, label='Validation Loss')
+    plt.title('Loss Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, train_accs, label='Train Acc')
+    plt.plot(epochs, val_accs, label='Validation Acc')
+    plt.title('Accuracy Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(config.SAVE_DIR, 'training_curve.png'))
+    print(f"Training completed. Curve saved to {config.SAVE_DIR}")
+
 
 if __name__ == "__main__":
-    main()
+    train_model()
